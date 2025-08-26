@@ -34,7 +34,7 @@ class HandleTyreImagesJob implements ShouldQueue
      */
     public function handle(TyreRepository $repository, StoreHandler $handler, DeleteHandler $delete): void
     {
-        if ($this->batch()->cancelled()) {
+        if ($this->batch()?->cancelled()) {
             return;
         }
 

@@ -28,7 +28,7 @@ class UploadTyreImagesToOzonJob implements ShouldQueue
      */
     public function handle(UploadTyreImageHandler $handler): void
     {
-        if ($this->batch()->cancelled()) {
+        if ($this->batch()?->cancelled()) {
             return;
         }
 
