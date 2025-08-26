@@ -2,9 +2,10 @@
 
 namespace App\Jobs;
 
-use App\Models\ValueObject\EntityType;
 use Exception;
+use Illuminate\Bus\Batchable;
 use Illuminate\Support\Facades\Log;
+use App\Models\ValueObject\EntityType;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Services\Interfaces\ThemeInterface;
@@ -16,7 +17,7 @@ use App\Services\UseCases\Commands\Tyres\Images\Handlers\DeleteHandler;
 
 class HandleTyreImagesJob implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, Batchable;
 
     /**
      * Создать новый экземпляр задания.
@@ -33,6 +34,10 @@ class HandleTyreImagesJob implements ShouldQueue
      */
     public function handle(TyreRepository $repository, StoreHandler $handler, DeleteHandler $delete): void
     {
+        if ($this->batch()->cancelled()) {
+            return;
+        }
+
         $tyre = $repository->getPreparedTyre($this->tyreId);
 
         $theme = $this->theme->get();

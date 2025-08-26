@@ -3,16 +3,20 @@
 namespace App\Orchid\Screens\Catalog;
 
 use App\Models\Theme;
+use Illuminate\Bus\Batch;
 use Orchid\Screen\Screen;
 use Illuminate\Http\Request;
 use App\Jobs\HandleTyreImagesJob;
 use Orchid\Screen\Actions\Button;
 use Orchid\Support\Facades\Alert;
 use Orchid\Support\Facades\Toast;
-use App\Jobs\UploadTyreImagesToOzonJob;
 use App\Models\Catalog\Tyres\Tyre;
+use Illuminate\Support\Facades\Bus;
+use App\Jobs\UploadTyreImagesToOzonJob;
+use App\Events\TyreImagesJobFinihedEvent;
 use App\Orchid\Layouts\Catalog\TyreListTable;
 use App\Orchid\Layouts\Catalog\TyreSelection;
+use App\Events\UploadTyreImagesToOzonJobFinihedEvent;
 
 class TyreListScreen extends Screen
 {
@@ -99,11 +103,20 @@ class TyreListScreen extends Screen
                 ->whereIn('id', $tyreIds)
                 ->get();
 
+            $jobs = [];
+
             foreach ($tyres as $tyre) {
-                HandleTyreImagesJob::dispatch(new $theme->theme, $tyre->id);
+                $jobs[] = new HandleTyreImagesJob(new $theme->theme, $tyre->id);
             }
 
-            Toast::success('Товары отправлены на обработку');
+            if (count($jobs)) {
+                $batch = Bus::batch($jobs)
+                    ->finally(function (Batch $batch) {
+                        TyreImagesJobFinihedEvent::dispatch($batch->id);
+                    })->dispatch();
+            }
+
+            Toast::success('Товары отправлены на обработку в задание ' . $batch->id);
         }
     }
 
@@ -119,11 +132,20 @@ class TyreListScreen extends Screen
             ->whereIn('id', $tyreIds)
             ->get();
 
+        $jobs = [];
+
         foreach ($tyres as $tyre) {
-            //
+            $jobs[] = new UploadTyreImagesToOzonJob($tyre->id);
         }
 
-        Toast::success('Фото товаров отправлены на загрузку');
+        if (count($jobs)) {
+            $batch = Bus::batch($jobs)
+                ->finally(function (Batch $batch) {
+                    UploadTyreImagesToOzonJobFinihedEvent::dispatch($batch->id);
+                })->dispatch();
+        }
+
+        Toast::success('Картинки товаро отправлены на загрузку в задание ' . $batch->id);
     }
 
     public function recreate(Tyre $tyre)
